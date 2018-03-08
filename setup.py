@@ -23,10 +23,10 @@ def get_version(*file_paths):
 
 version = get_version("pybatis", "__init__.py")
 
-
 if sys.argv[-1] == 'publish':
     try:
         import wheel
+
         print("Wheel version: ", wheel.__version__)
     except ImportError:
         print('Wheel library missing. Please run "pip install wheel"')
@@ -51,12 +51,14 @@ setup(
     long_description=readme + '\n\n' + history,
     author='x-debug',
     author_email='512766594@qq.com',
-    url='https://github.com/x-debug/pybatis',
+    url='https://gitee.com/huichengip_chenxf/pybatis',
     packages=[
         'pybatis',
     ],
     include_package_data=True,
-    install_requires=[],
+    install_requires=[
+        'pyquery', 'pyjsonmodels'
+    ],
     license="MIT",
     zip_safe=False,
     keywords='pybatis',
