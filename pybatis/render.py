@@ -76,7 +76,7 @@ class SqlExecutor:
         if cls_model:
             dict = True
         with connections[using].cursor() as c:
-            self._execute(c, render, ctx[SQL_KEY])
+            self._execute(c, render, ctx[SQL_KEY] if SQL_KEY in ctx else None)
             if dict:
                 if not cls_model:
                     return self._dictfetchall(c)
@@ -91,7 +91,7 @@ class SqlExecutor:
             dict = True
         with connections[using].cursor() as c:
             if SQL_KEY in ctx:
-                self._execute(c, render, ctx[SQL_KEY])
+                self._execute(c, render, ctx[SQL_KEY] if SQL_KEY in ctx else None)
             else:
                 self._execute(c, render)
             if dict:
