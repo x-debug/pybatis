@@ -57,7 +57,7 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'pyquery', 'pyjsonmodels'
+        'pyquery', 'pyjsonmodels', 'sqlparse'
     ],
     license="MIT",
     zip_safe=False,

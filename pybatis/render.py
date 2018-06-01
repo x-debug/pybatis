@@ -9,6 +9,8 @@
     :license: LICENSE_NAME, see LICENSE_FILE for more details.
 """
 # from functools import partial
+import sqlparse
+from django.conf import settings
 from collections import namedtuple
 from django.db import connections
 from django.template import Context, Template
@@ -23,9 +25,18 @@ class SqlExecutor:
         self._loader = loader
 
     def _execute(self, cursor, sql, params=None):
-        print('SQL:{s},PARAMS:{p}'.format(s=sql, p=params))
+        if settings.DEBUG:
+            sql = sqlparse.format(sql, reindent=True, keyword_case='upper')
+            if params:
+                print('SQL:{s},PARAMS:{p}'.format(s=sql % tuple(params), p=params))
+            else:
+                print('SQL:{s}'.format(s=sql))
         params = params or list()
         return cursor.execute(sql, params)
+
+    def _get_last_id(self, cursor):
+        record = self._execute(cursor, 'SELECT LAST_INSERT_ID() AS id').fetchone()
+        return record['id']
 
     def _dictfetchall(self, cursor, fetch_all=True):
         columns = [col[0] for col in cursor.description]
@@ -72,6 +83,13 @@ class SqlExecutor:
         return ctx, render
 
     def fetch_all(self, dict=True, using='default', cls_model=None):
+        """
+        返回多条记录
+        :param dict: 是否采用字典方式返回,否则用属性方式返回
+        :param using: 作用的数据库
+        :param cls_model: 模型类型
+        :return: 获得的数据
+        """
         ctx, render = self._render_sql()
         if cls_model:
             dict = True
@@ -85,7 +103,36 @@ class SqlExecutor:
             else:
                 return self._namedtuplefetchall(c)
 
+    def insert(self, using='default'):
+        """
+        插入记录
+        :param using: 作用的数据库
+        :return: 插入的编号
+        """
+        ctx, render = self._render_sql()
+        with connections[using].cursor() as c:
+            self._execute(c, render, ctx[SQL_KEY] if SQL_KEY in ctx else None)
+            return self._get_last_id(c)
+
+    def update(self, using='default'):
+        """
+        更新记录
+        :param using: 作用的数据库
+        :return: 更新影响的行数
+        """
+        ctx, render = self._render_sql()
+        with connections[using].cursor() as c:
+            self._execute(c, render, ctx[SQL_KEY] if SQL_KEY in ctx else None)
+            return c.rowcount
+
     def fetch_one(self, dict=True, using='default', cls_model=None):
+        """
+        返回一条记录
+        :param dict:
+        :param using:
+        :param cls_model:
+        :return:
+        """
         ctx, render = self._render_sql()
         if cls_model:
             dict = True
@@ -105,6 +152,14 @@ class SqlExecutor:
                 return self._namedtuplefetchall(c, fetch_all=False)
 
     def page_dict(self, pageIndex, pageSize, using='default', **kwargs):
+        """
+        返回分页数据
+        :param pageIndex: 分页开始编号
+        :param pageSize: 分页尺寸
+        :param using: 作用的数据库
+        :param kwargs:
+        :return: 分页的数据
+        """
         return self.paging(page_no=pageIndex, per_page=pageSize, dict=True, using=using)
 
     def page_attr(self, pageIndex, pageSize, using='default', **kwargs):
@@ -122,12 +177,12 @@ class SqlExecutor:
                 # func = partial(self._dictfetchall_execute, cursor=c)
                 query = QueryWrapper(c, render, self._dictfetchall_execute,
                                      lambda s, p: self._dictfetchall_execute(c, s, p, fetch_all=False)['c'],
-                                     ctx[SQL_KEY], using)
+                                     ctx[SQL_KEY] if SQL_KEY in ctx else None, using)
             else:
                 # func = partial(self._namedtuplefetchall_execute, cursor=c)
                 query = QueryWrapper(c, render, self._namedtuplefetchall_execute,
                                      lambda s, p: self._namedtuplefetchall_execute(c, s, p, fetch_all=False).c,
-                                     ctx[SQL_KEY], using)
+                                     ctx[SQL_KEY] if SQL_KEY in ctx else None, using)
             return paginator(query, per_page, page_no, cls_model)
 
     def __str__(self):

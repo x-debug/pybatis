@@ -53,6 +53,7 @@ class QueryWrapper(object):
 
     def count(self):
         """计算总页数"""
+
         sql = """SELECT COUNT(*) AS c FROM (%s) _count""" % self.sql
         return self.ncb(sql, self.params)  # 返回总页数
 
